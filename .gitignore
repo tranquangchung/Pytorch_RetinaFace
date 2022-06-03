@@ -1,0 +1,16 @@
+checkpoints
+data
+eval
+FDDB_Evaluation
+mafa
+results
+weights
+widerface_evaluate/build
+widerface_evaluate/widerface_txt*
+widerface_evaluate/*.so
+widerface_evaluate/*.c
+xml_mafa
+annotations.xml
+convertjson.json
+test_dataset.py
+widerface.zip
