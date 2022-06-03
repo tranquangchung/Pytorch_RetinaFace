@@ -1,5 +1,4 @@
 checkpoints
-data
 eval
 FDDB_Evaluation
 mafa
@@ -14,3 +13,6 @@ annotations.xml
 convertjson.json
 test_dataset.py
 widerface.zip
+data/FDDB/fddb_images.zip
+data/Mafa_data
+widerface
