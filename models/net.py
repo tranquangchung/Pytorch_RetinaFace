@@ -28,7 +28,8 @@ def conv_bn1X1(inp, oup, stride, leaky=0):
 
 def conv_dw(inp, oup, stride, leaky=0.1):
     return nn.Sequential(
-        nn.Conv2d(inp, inp, 3, stride, 1, groups=inp, bias=False),
+        # nn.Conv2d(inp, inp, 3, stride, 1, groups=inp, bias=False),
+        nn.Conv2d(inp, inp, 3, stride, 1, bias=False),
         nn.BatchNorm2d(inp),
         nn.LeakyReLU(negative_slope= leaky,inplace=True),
 

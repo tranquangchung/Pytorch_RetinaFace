@@ -64,7 +64,7 @@ class RetinaFace(nn.Module):
                     name = k[7:]  # remove module.
                     new_state_dict[name] = v
                 # load params
-                backbone.load_state_dict(new_state_dict)
+                # backbone.load_state_dict(new_state_dict)
         elif cfg['name'] == 'Resnet50':
             import torchvision.models as models
             backbone = models.resnet50(pretrained=cfg['pretrain'])

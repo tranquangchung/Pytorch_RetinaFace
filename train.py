@@ -80,6 +80,7 @@ if args.resume_net is not None:
             name = k
         new_state_dict[name] = v
     net.load_state_dict(new_state_dict)
+    print("Load: ", args.resume_net)
     print("Load finish")
 
 if num_gpu > 1 and gpu_train:
