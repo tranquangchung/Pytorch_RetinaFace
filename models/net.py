@@ -10,7 +10,7 @@ def conv_bn(inp, oup, stride = 1, leaky = 0):
     return nn.Sequential(
         nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
         nn.BatchNorm2d(oup),
-        nn.LeakyReLU(negative_slope=leaky, inplace=True)
+        nn.LeakyReLU(negative_slope=leaky, inplace=False)
     )
 
 def conv_bn_no_relu(inp, oup, stride):
@@ -23,7 +23,7 @@ def conv_bn1X1(inp, oup, stride, leaky=0):
     return nn.Sequential(
         nn.Conv2d(inp, oup, 1, stride, padding=0, bias=False),
         nn.BatchNorm2d(oup),
-        nn.LeakyReLU(negative_slope=leaky, inplace=True)
+        nn.LeakyReLU(negative_slope=leaky, inplace=False)
     )
 
 def conv_dw(inp, oup, stride, leaky=0.1):
@@ -31,11 +31,11 @@ def conv_dw(inp, oup, stride, leaky=0.1):
         # nn.Conv2d(inp, inp, 3, stride, 1, groups=inp, bias=False),
         nn.Conv2d(inp, inp, 3, stride, 1, bias=False),
         nn.BatchNorm2d(inp),
-        nn.LeakyReLU(negative_slope= leaky,inplace=True),
+        nn.LeakyReLU(negative_slope= leaky,inplace=False),
 
         nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
         nn.BatchNorm2d(oup),
-        nn.LeakyReLU(negative_slope= leaky,inplace=True),
+        nn.LeakyReLU(negative_slope= leaky,inplace=False),
     )
 
 class SSH(nn.Module):
@@ -78,6 +78,8 @@ class FPN(nn.Module):
 
         self.merge1 = conv_bn(out_channels, out_channels, leaky = leaky)
         self.merge2 = conv_bn(out_channels, out_channels, leaky = leaky)
+        self.output2_add = nn.quantized.FloatFunctional()
+        self.output1_add = nn.quantized.FloatFunctional()
 
     def forward(self, input):
         # names = list(input.keys())
@@ -88,11 +90,12 @@ class FPN(nn.Module):
         output3 = self.output3(input[2])
 
         up3 = F.interpolate(output3, size=[output2.size(2), output2.size(3)], mode="nearest")
-        output2 = output2 + up3
+        output2 = self.output2_add.add(output2, up3)
         output2 = self.merge2(output2)
 
         up2 = F.interpolate(output2, size=[output1.size(2), output1.size(3)], mode="nearest")
-        output1 = output1 + up2
+        # output1 = torch.add(output1, up2)
+        output1 = self.output1_add.add(output1, up2)
         output1 = self.merge1(output1)
 
         out = [output1, output2, output3]

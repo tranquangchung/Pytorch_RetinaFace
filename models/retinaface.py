@@ -8,7 +8,7 @@ from collections import OrderedDict
 from models.net import MobileNetV1 as MobileNetV1
 from models.net import FPN as FPN
 from models.net import SSH as SSH
-
+import pdb
 
 
 class ClassHead(nn.Module):
@@ -125,3 +125,30 @@ class RetinaFace(nn.Module):
         else:
             output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions)
         return output
+
+class QuantizedRetinaFace(nn.Module):
+    def __init__(self, model_fp32):
+
+        super(QuantizedRetinaFace, self).__init__()
+        # QuantStub converts tensors from floating point to quantized.
+        # This will only be used for inputs.
+        self.quant = torch.quantization.QuantStub()
+        # DeQuantStub converts tensors from quantized to floating point.
+        # This will only be used for outputs.
+        self.dequant = torch.quantization.DeQuantStub()
+        # FP32 model
+        self.model_fp32 = model_fp32
+
+    def forward(self, x):
+        # manually specify where tensors will be converted from floating
+        # point to quantized in the quantized model
+        x = self.quant(x)
+        x = self.model_fp32(x)
+        # manually specify where tensors will be converted from quantized
+        # to floating point in the quantized model
+        x0 = self.dequant(x[0])
+        x1 = self.dequant(x[1])
+        x1 = F.softmax(x1, dim=-1)
+        x2 = self.dequant(x[2])
+        x = (x0, x1, x2)
+        return x
