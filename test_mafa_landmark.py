@@ -11,6 +11,7 @@ import cv2
 from models.retinaface import RetinaFace
 from utils.box_utils import decode, decode_landm
 from utils.timer import Timer
+from scipy.spatial import distance
 import pdb
 
 
@@ -206,7 +207,12 @@ def _get_detections(generator):
         _t['misc'].toc()
         box_detect = []
         for box in dets:
-            tmp = [int(box[0]), int(box[1]), int(box[2]), int(box[3]), box[4]] # x1y1 x2y2
+            tmp = [
+                    int(box[0]), int(box[1]), int(box[2]), int(box[3]), box[4], 
+                    int(box[5]), int(box[6]), int(box[7]), int(box[8]),
+                    int(box[9]), int(box[10]), int(box[11]), int(box[12]),
+                    int(box[13]), int(box[14])
+                ] # x1y1 x2y2
             box_detect.append(tmp)
         box_detect = np.array(box_detect)
         all_detections[img_name] = box_detect
@@ -239,8 +245,8 @@ def _get_detections(generator):
                 os.makedirs("./results/")
             name = "./results/" + img_name
             cv2.imwrite(name, img_raw)
-        if i > 100:
-            break
+        # if i > 20:
+        #     break
     return all_detections
 
 def _get_annotations(generator):
@@ -260,16 +266,39 @@ def _get_annotations(generator):
         image_name = key.split("/")[-1]
         tmp = []
         for v in value:
-            box = v.split(" ")[:4]
+            box = v.split(" ")
             x1 = int(box[0])
             y1 = int(box[1])
             w = int(box[2])
             h = int(box[3])
             tmp1 = [x1, y1, int(x1+w), int(y1+h)] # x1y1 , x2y2
+            # left_eye = [int(float(box[4])), int(float(box[5]))]
+            # right_eye = [int(float(box[7])), int(float(box[8]))]
+            # nose = [int(float(box[10])), int(float(box[11]))]
+            # leftmouth = [int(float(box[13])), int(float(box[14]))]
+            # rightmouth = [int(float(box[16])), int(float(box[17]))]
+            landmarks = [
+                int(float(box[4])), int(float(box[5])), 
+                int(float(box[7])), int(float(box[8])), 
+                int(float(box[10])), int(float(box[11])), 
+                int(float(box[13])), int(float(box[14])), 
+                int(float(box[16])), int(float(box[17]))
+            ]
+            tmp1.extend(landmarks)
             tmp.append(tmp1)
         tmp = np.array(tmp).astype(int)
         all_annotations[image_name] = tmp
     return all_annotations
+
+def caculate_error(landmark_a, landmark_d):
+    # left_e, right_e, nose, left_m, right_m = caculate_error(landmark_a_assigned, landmark_d)
+    left_e = distance.euclidean(landmark_a[0:2], landmark_d[0:2])
+    right_e = distance.euclidean(landmark_a[2:4], landmark_d[2:4])
+    nose = distance.euclidean(landmark_a[4:6], landmark_d[4:6])
+    left_m = distance.euclidean(landmark_a[6:8], landmark_d[6:8])
+    right_m = distance.euclidean(landmark_a[8:10], landmark_d[8:10])
+    total_e = left_e + right_e + nose + left_m + right_m
+    return total_e, left_e, right_e, nose, left_m, right_m
 
 if __name__ == '__main__':
     torch.set_grad_enabled(False)
@@ -319,21 +348,24 @@ if __name__ == '__main__':
     true_positives  = np.zeros((0,))
     scores          = np.zeros((0,))
     num_annotations = 0.0
-
+    total_e, left_e, right_e, nose, left_m, right_m = 0, 0, 0, 0, 0, 0
+    count_face = 0
     for key, _ in generator.items():
         image_name = key.split("/")[-1]
         detections           = all_detections[image_name]
         annotations          = all_annotations[image_name]
         num_annotations     += annotations.shape[0]
         detected_annotations = []
+
         for d in detections:
             scores = np.append(scores, d[4])
-
+            landmark_d = d[5:]
+            landmark_a = annotations[:, 4:]
             if annotations.shape[0] == 0:
                 false_positives = np.append(false_positives, 1)
                 true_positives  = np.append(true_positives, 0)
                 continue
-            overlaps            = compute_overlap(np.expand_dims(d[:4], axis=0), annotations)
+            overlaps            = compute_overlap(np.expand_dims(d[:4], axis=0), annotations[:, :4])
             assigned_annotation = np.argmax(overlaps, axis=1)
             max_overlap         = overlaps[0, assigned_annotation]
 
@@ -341,6 +373,15 @@ if __name__ == '__main__':
                 false_positives = np.append(false_positives, 0)
                 true_positives  = np.append(true_positives, 1)
                 detected_annotations.append(assigned_annotation)
+                landmark_a_assigned = landmark_a[assigned_annotation]
+                total_e_tmp, left_e_tmp, right_e_tmp, nose_tmp, left_m_tmp, right_m_tmp = caculate_error(landmark_a_assigned.squeeze(), landmark_d)
+                total_e += total_e_tmp
+                left_e += left_e_tmp
+                right_e += right_e_tmp
+                nose += nose_tmp
+                left_m += left_m_tmp
+                right_m += right_m_tmp
+                count_face += 1
             else:
                 false_positives = np.append(false_positives, 1)
                 true_positives  = np.append(true_positives, 0)
@@ -363,3 +404,9 @@ if __name__ == '__main__':
     
     print('\nmAP:')
     print(average_precision)
+    print("Landmark Error: \n")
+    print("True Positives: ", count_face)
+    print("Total: {0}, Left Eye: {1}, Right Eye: {2}, Nose: {3}, Left Mouth: {4}, Right Mouth: {5}".format(
+        total_e / count_face, left_e / count_face, right_e / count_face, 
+        nose / count_face, left_m / count_face, right_m / count_face,
+        ))
