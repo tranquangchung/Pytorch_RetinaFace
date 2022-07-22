@@ -298,8 +298,8 @@ def _get_detections(testset_folder, generator):
 
         all_bounding_boxes[img_name] = bounding_boxes
         ################
-        # for b in bounding_boxes:
-        #     cv2.rectangle(img, (int(b[0]), int(b[1])), (int(b[2]), int(b[3])), (0, 0, 255), 2)
+        for b in bounding_boxes:
+            cv2.rectangle(img_show, (int(b[0]), int(b[1])), (int(b[2]), int(b[3])), (0, 255, 0), 2)
         # cv2.imwrite("./results/abc1.png", img)
         ################
         # testing scale

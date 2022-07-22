@@ -290,15 +290,22 @@ def _get_annotations(generator):
         all_annotations[image_name] = tmp
     return all_annotations
 
-def caculate_error(landmark_a, landmark_d):
+def caculate_error(landmark_a, landmark_d, norm):
     # left_e, right_e, nose, left_m, right_m = caculate_error(landmark_a_assigned, landmark_d)
     left_e = distance.euclidean(landmark_a[0:2], landmark_d[0:2])
+    oks_left_e = left_e/norm
     right_e = distance.euclidean(landmark_a[2:4], landmark_d[2:4])
+    oks_right_e = right_e/norm
     nose = distance.euclidean(landmark_a[4:6], landmark_d[4:6])
+    oks_nose = nose/norm
     left_m = distance.euclidean(landmark_a[6:8], landmark_d[6:8])
+    oks_left_m = left_m/norm
     right_m = distance.euclidean(landmark_a[8:10], landmark_d[8:10])
+    oks_right_m = right_m/norm
     total_e = left_e + right_e + nose + left_m + right_m
-    return total_e, left_e, right_e, nose, left_m, right_m
+    oks_total_e = oks_left_e + oks_right_e + oks_nose + oks_left_m + oks_right_m
+    return oks_total_e, oks_left_e, oks_right_e, oks_nose, oks_left_m, oks_right_m
+    # return total_e, left_e, right_e, nose, left_m, right_m
 
 if __name__ == '__main__':
     torch.set_grad_enabled(False)
@@ -374,7 +381,11 @@ if __name__ == '__main__':
                 true_positives  = np.append(true_positives, 1)
                 detected_annotations.append(assigned_annotation)
                 landmark_a_assigned = landmark_a[assigned_annotation]
-                total_e_tmp, left_e_tmp, right_e_tmp, nose_tmp, left_m_tmp, right_m_tmp = caculate_error(landmark_a_assigned.squeeze(), landmark_d)
+                # area = (annotations[assigned_annotation][:, 2] - annotations[assigned_annotation][:, 0]) * (annotations[assigned_annotation][:, 3] - annotations[assigned_annotation][:, 1])
+                a = annotations[assigned_annotation][:, 2] - annotations[assigned_annotation][:, 0]
+                b = annotations[assigned_annotation][:, 3] - annotations[assigned_annotation][:, 1]
+                norm_c = np.sqrt(a**2 + b**2)
+                total_e_tmp, left_e_tmp, right_e_tmp, nose_tmp, left_m_tmp, right_m_tmp = caculate_error(landmark_a_assigned.squeeze(), landmark_d, norm_c)
                 total_e += total_e_tmp
                 left_e += left_e_tmp
                 right_e += right_e_tmp
