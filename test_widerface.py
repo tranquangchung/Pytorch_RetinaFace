@@ -197,6 +197,7 @@ if __name__ == '__main__':
 
         # save image
         if args.save_image:
+            ########## prediction #########
             for b in dets:
                 if b[4] < args.vis_thres:
                     continue

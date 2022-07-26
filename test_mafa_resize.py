@@ -13,7 +13,9 @@ from utils.box_utils import decode, decode_landm
 from utils.timer import Timer
 import random
 from utils.box_utils import matrix_iof
+from data.data_augment_1 import _crop
 import math
+import pdb
 
 
 parser = argparse.ArgumentParser(description='Retinaface')
@@ -34,117 +36,6 @@ parser.add_argument('--path_test', type=str, help='Path Test')
 args = parser.parse_args()
 print(args)
 
-def crop(image, boxes, labels, landm):
-    height, width, _ = image.shape
-    pad_image_flag = True
-    h_new, w_new = 360, 640 
-
-    for _ in range(250):
-        """
-        if random.uniform(0, 1) <= 0.2:
-            scale = 1.0
-        else:
-            scale = random.uniform(0.3, 1.0)
-        """
-        PRE_SCALES = [0.3, 0.45, 0.6, 0.8, 1.0]
-        scale = random.choice(PRE_SCALES)
-        # short_side = min(width, height)
-        # w = int(scale * short_side)
-        # h = w
-        w = int(width * scale)
-        h = int(height * scale)
-
-        if width <= w:
-            l = 0
-        else: # width > w
-            l = random.randrange(width - w)
-        if height <= h:
-            t = 0
-        else: # height > w
-            t = random.randrange(height - h)
-        roi = np.array((l, t, l + w, t + h))
-
-        value = matrix_iof(boxes, roi[np.newaxis])
-        flag = (value >= 1)
-        if not flag.any():
-            continue
-
-        centers = (boxes[:, :2] + boxes[:, 2:]) / 2
-        mask_a = np.logical_and(roi[:2] < centers, centers < roi[2:]).all(axis=1)
-        boxes_t = boxes[mask_a].copy()
-        labels_t = labels[mask_a].copy()
-        landms_t = landm[mask_a].copy()
-        landms_t = landms_t.reshape([-1, 5, 2])
-
-        if boxes_t.shape[0] == 0:
-            continue
-
-        image_t = image[roi[1]:roi[3], roi[0]:roi[2]]
-        boxes_t[:, :2] = np.maximum(boxes_t[:, :2], roi[:2])
-        boxes_t[:, :2] -= roi[:2]
-        boxes_t[:, 2:] = np.minimum(boxes_t[:, 2:], roi[2:])
-        boxes_t[:, 2:] -= roi[:2]
-
-        # landm
-        landms_t[:, :, :2] = landms_t[:, :, :2] - roi[:2]
-        landms_t[:, :, :2] = np.maximum(landms_t[:, :, :2], np.array([0, 0]))
-        landms_t[:, :, :2] = np.minimum(landms_t[:, :, :2], roi[2:] - roi[:2])
-        landms_t = landms_t.reshape([-1, 10])
-
-
-	# make sure that the cropped image contains at least one face > 16 pixel at training image scale
-        b_w_t = (boxes_t[:, 2] - boxes_t[:, 0] + 1) / w * w_new
-        b_h_t = (boxes_t[:, 3] - boxes_t[:, 1] + 1) / h * h_new
-        mask_b = np.minimum(b_w_t, b_h_t) > 0.0
-        boxes_t = boxes_t[mask_b]
-        labels_t = labels_t[mask_b]
-        landms_t = landms_t[mask_b]
-
-        if boxes_t.shape[0] == 0:
-            continue
-
-        pad_image_flag = False
-        ##### padding & resize here #####
-        h_roi, w_roi, _ = image_t.shape 
-        ratio = math.ceil(max(h_roi/h_new, w_roi/w_new))
-        h_roi_new = int(h_roi / ratio)
-        w_roi_new = int(w_roi / ratio)
-        image_t = cv2.resize(image_t, (w_roi_new, h_roi_new))
-        scale_h, scale_w = float(h_roi_new / h_roi), float(w_roi_new / w_roi)
-        boxes_t[:, 0::2] *= scale_w 
-        boxes_t[:, 1::2] *= scale_h
-        landms_t[:, 0::2] *= scale_w
-        landms_t[:, 1::2] *= scale_h
-        #######################
-
-        # boxes_tmp = boxes_t
-        # x1 = int(boxes_tmp[:, 0][0])
-        # y1 = int(boxes_tmp[:, 1][0])
-        # x2 = int(boxes_tmp[:, 2][0])
-        # y2 = int(boxes_tmp[:, 3][0])
-        # print(x1, y1, y2, y2)
-        # image_t = cv2.rectangle(image_t, (x1, y1), (x2, y2), (0,255,0), 2)
-        # for i in range(0, 10, 2):
-        #     p1, p2 = int(landms_t[0][i]), int(landms_t[0][i+1])
-        #     image_t = cv2.circle(image_t, (p1, p2), 1, (0, 255, 0), 2)
-        # cv2.imwrite("abc.png", image_t)
-        return image_t, boxes_t, labels_t, landms_t, pad_image_flag
-    return image, boxes, labels, landm, pad_image_flag
-
-def pad_to_rectangle(image, rgb_mean, pad_image_flag):
-    # if not pad_image_flag:
-    #     return image
-    # print(image.shape)
-    try:
-        height, width, _ = image.shape
-        image_t = np.empty((360, 640, 3), dtype=image.dtype)
-        image_t[:, :] = rgb_mean
-        image_t[0:0 + height, 0:0 + width] = image
-    except Exception as e:
-        interp_methods = [cv2.INTER_LINEAR, cv2.INTER_CUBIC, cv2.INTER_AREA, cv2.INTER_NEAREST, cv2.INTER_LANCZOS4]
-        interp_method = interp_methods[random.randrange(5)]
-        image_t = cv2.resize(image, (640, 360), interpolation=interp_method) # (w, h)
-    return image_t
 
 def resize_subtract_mean(image, rgb_mean):
     # interp_methods = [cv2.INTER_LINEAR, cv2.INTER_CUBIC, cv2.INTER_AREA, cv2.INTER_NEAREST, cv2.INTER_LANCZOS4]
@@ -247,7 +138,8 @@ def _compute_ap(recall, precision):
 
 def _get_detections(testset_folder, generator):
     # testing begin
-    rgb_mean = (104, 117, 123)
+    # rgb_mean = (104, 117, 123)
+    rgb_mean = (0,0,0)
     num_images = len(generator.keys())
     _t = {'forward_pass': Timer(), 'misc': Timer()}
     all_detections = {}
@@ -267,8 +159,8 @@ def _get_detections(testset_folder, generator):
             landmark = np.zeros((1,10))
             true_label = np.zeros((1,1))
             # bbox
-            bounding_box[0, 0] = label[0]  # x1
-            bounding_box[0, 1] = label[1]  # y1
+            bounding_box[0, 0] = max(int(label[0]), 0)  # x1
+            bounding_box[0, 1] = max(int(label[1]), 0)  # y1
             bounding_box[0, 2] = int(label[0]) + int(label[2])  # x2
             bounding_box[0, 3] = int(label[1]) + int(label[3])  # y2
             # landmarks
@@ -289,41 +181,17 @@ def _get_detections(testset_folder, generator):
             bounding_boxes = np.append(bounding_boxes, bounding_box, axis=0)
             landmarks = np.append(landmarks, landmark, axis=0)
             true_labels = np.append(true_labels, true_label, axis=0)
-        img, bounding_boxes, true_labels, landmarks, pad_image_flag = crop(img, bounding_boxes, true_labels, landmarks)
-        img = pad_to_rectangle(img, rgb_mean, pad_image_flag)
+        img, bounding_boxes, true_labels, landmarks, pad_image_flag = _crop(img, bounding_boxes, true_labels, landmarks)
+        # img = pad_to_rectangle(img, rgb_mean, pad_image_flag)
         img_show = img
         new_height, new_width, _ = img.shape
-        # bounding_boxes[:, 0::2] /= new_width
-        # bounding_boxes[:, 1::2] /= new_height
 
         all_bounding_boxes[img_name] = bounding_boxes
-        ################
-        for b in bounding_boxes:
-            cv2.rectangle(img_show, (int(b[0]), int(b[1])), (int(b[2]), int(b[3])), (0, 255, 0), 2)
-        # cv2.imwrite("./results/abc1.png", img)
-        ################
-        # testing scale
-        # target_size = 640
-        # max_size = 800
-        # im_shape = img.shape
-        # im_size_min = np.min(im_shape[0:2])
-        # im_size_max = np.max(im_shape[0:2])
-        # resize = float(target_size) / float(im_size_min)
-        # prevent bigger axis from being more than max_size:
-        # if np.round(resize * im_size_max) > max_size:
-        #     resize = float(max_size) / float(im_size_max)
-        # if args.origin_size:
-        #    resize = 1
-
-        # if resize != 1:
-        #     img = cv2.resize(img, None, None, fx=resize, fy=resize, interpolation=cv2.INTER_LINEAR)
         im_height, im_width, _ = img.shape
         # print(im_height, im_width)
         scale = torch.Tensor([img.shape[1], img.shape[0], img.shape[1], img.shape[0]])
 
         img = resize_subtract_mean(img, rgb_mean)
-        # img -= (104, 117, 123)
-        # img = img.transpose(2, 0, 1)
         img = torch.from_numpy(img).unsqueeze(0)
         img = img.to(device)
         scale = scale.to(device)
@@ -389,6 +257,10 @@ def _get_detections(testset_folder, generator):
 
         # save image
         if args.save_image:
+            ###### ground-truth ########
+            for b in bounding_boxes:
+                cv2.rectangle(img_show, (int(b[0]), int(b[1])), (int(b[2]), int(b[3])), (0, 255, 0), 2)
+            ###### prediction #######
             for b in dets:
                 if b[4] < args.vis_thres:
                     continue

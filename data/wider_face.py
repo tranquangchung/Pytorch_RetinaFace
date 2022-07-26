@@ -6,8 +6,9 @@ import torch.utils.data as data
 import cv2
 import numpy as np
 
-class WiderFaceDetection(data.Dataset):
+
 # class WiderFaceDetection():
+class WiderFaceDetection(data.Dataset):
     def __init__(self, txt_path, preproc=None):
         self.preproc = preproc
         self.imgs_path = []
@@ -50,8 +51,8 @@ class WiderFaceDetection(data.Dataset):
         for idx, label in enumerate(labels):
             annotation = np.zeros((1, 15))
             # bbox
-            annotation[0, 0] = label[0]  # x1
-            annotation[0, 1] = label[1]  # y1
+            annotation[0, 0] = max(label[0], 0)  # x1
+            annotation[0, 1] = max(label[1], 0)  # y1
             annotation[0, 2] = label[0] + label[2]  # x2
             annotation[0, 3] = label[1] + label[3]  # y2
 
@@ -70,6 +71,10 @@ class WiderFaceDetection(data.Dataset):
                 annotation[0, 14] = -1
             else:
                 annotation[0, 14] = 1
+            
+            #### remove small box (lt 80pixel) ####
+            # if label[2] < 50 and label[3] < 50:
+            #     continue
 
             annotations = np.append(annotations, annotation, axis=0)
         target = np.array(annotations)
@@ -105,8 +110,9 @@ def detection_collate(batch):
     return (torch.stack(imgs, 0), targets)
 
 if __name__ == "__main__":
-    from data_augment import preproc
+    # from data_augment import preproc
+    from data.data_augment_1 import preproc1
     training_dataset="/home/chungtran/Code/Image/Pytorch_Retinaface/data/widerface/train/label.txt"
     rgb_mean = (104, 117, 123) # bgr order
     img_dim = 640
-    widerface = WiderFaceDetection(training_dataset, preproc(img_dim, rgb_mean))
+    widerface = WiderFaceDetection(training_dataset, preproc1(img_dim, rgb_mean))
