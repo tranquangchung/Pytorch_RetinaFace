@@ -11,6 +11,8 @@ import cv2
 from models.retinaface import RetinaFace
 from utils.box_utils import decode, decode_landm
 from utils.timer import Timer
+from scipy.spatial import distance
+import glob
 import pdb
 
 
@@ -122,12 +124,14 @@ def _compute_ap(recall, precision):
     return ap
 
 
-def _get_detections(generator):
+def _get_detections(generator=None):
     # testing begin
-    num_images = len(generator.keys())
+    imgs_paths = glob.glob("/data/processed/speech/chung/Pytorch_Retinaface/camera/*.jpg")
+    num_images = len(imgs_paths)
+    # num_images = len(generator.keys())
     _t = {'forward_pass': Timer(), 'misc': Timer()}
     all_detections = {}
-    for i, (image_path, _) in enumerate(generator.items()):
+    for i, (image_path) in enumerate(imgs_paths):
         img_name = image_path.split("/")[-1]
         img_raw = cv2.imread(image_path, cv2.IMREAD_COLOR)
         img = np.float32(img_raw)
@@ -206,7 +210,12 @@ def _get_detections(generator):
         _t['misc'].toc()
         box_detect = []
         for box in dets:
-            tmp = [int(box[0]), int(box[1]), int(box[2]), int(box[3]), box[4]] # x1y1 x2y2
+            tmp = [
+                    int(box[0]), int(box[1]), int(box[2]), int(box[3]), box[4], 
+                    int(box[5]), int(box[6]), int(box[7]), int(box[8]),
+                    int(box[9]), int(box[10]), int(box[11]), int(box[12]),
+                    int(box[13]), int(box[14])
+                ] # x1y1 x2y2
             box_detect.append(tmp)
         box_detect = np.array(box_detect)
         all_detections[img_name] = box_detect
@@ -260,16 +269,46 @@ def _get_annotations(generator):
         image_name = key.split("/")[-1]
         tmp = []
         for v in value:
-            box = v.split(" ")[:4]
+            box = v.split(" ")
             x1 = int(box[0])
             y1 = int(box[1])
             w = int(box[2])
             h = int(box[3])
             tmp1 = [x1, y1, int(x1+w), int(y1+h)] # x1y1 , x2y2
+            # left_eye = [int(float(box[4])), int(float(box[5]))]
+            # right_eye = [int(float(box[7])), int(float(box[8]))]
+            # nose = [int(float(box[10])), int(float(box[11]))]
+            # leftmouth = [int(float(box[13])), int(float(box[14]))]
+            # rightmouth = [int(float(box[16])), int(float(box[17]))]
+            landmarks = [
+                int(float(box[4])), int(float(box[5])), 
+                int(float(box[7])), int(float(box[8])), 
+                int(float(box[10])), int(float(box[11])), 
+                int(float(box[13])), int(float(box[14])), 
+                int(float(box[16])), int(float(box[17]))
+            ]
+            tmp1.extend(landmarks)
             tmp.append(tmp1)
         tmp = np.array(tmp).astype(int)
         all_annotations[image_name] = tmp
     return all_annotations
+
+def caculate_error(landmark_a, landmark_d, norm):
+    # left_e, right_e, nose, left_m, right_m = caculate_error(landmark_a_assigned, landmark_d)
+    left_e = distance.euclidean(landmark_a[0:2], landmark_d[0:2])
+    oks_left_e = left_e/norm
+    right_e = distance.euclidean(landmark_a[2:4], landmark_d[2:4])
+    oks_right_e = right_e/norm
+    nose = distance.euclidean(landmark_a[4:6], landmark_d[4:6])
+    oks_nose = nose/norm
+    left_m = distance.euclidean(landmark_a[6:8], landmark_d[6:8])
+    oks_left_m = left_m/norm
+    right_m = distance.euclidean(landmark_a[8:10], landmark_d[8:10])
+    oks_right_m = right_m/norm
+    total_e = left_e + right_e + nose + left_m + right_m
+    oks_total_e = oks_left_e + oks_right_e + oks_nose + oks_left_m + oks_right_m
+    return oks_total_e, oks_left_e, oks_right_e, oks_nose, oks_left_m, oks_right_m
+    # return total_e, left_e, right_e, nose, left_m, right_m
 
 if __name__ == '__main__':
     torch.set_grad_enabled(False)
@@ -293,73 +332,5 @@ if __name__ == '__main__':
 
     # testing dataset
     testset_folder = args.dataset_folder
+    all_detections = _get_detections() 
 
-    with open(args.path_test) as f:
-        lines = f.readlines()
-        _fp_bbox_map = {}
-        for line in lines:
-            line = line.strip()
-            if line.startswith('#'):
-                name = line[1:].strip()
-                _fp_bbox_map[name] = []
-                continue
-            _fp_bbox_map[name].append(line)
-    all_annotations = _get_annotations(_fp_bbox_map)
-    all_detections = _get_detections(_fp_bbox_map) 
-
-    average_precisions = {}
-    iou_threshold = 0.5
-    score_threshold = 0.05
-    max_detections = 100
-
-    # for label in range(generator.num_classes()):
-    generator = _fp_bbox_map
-
-    false_positives = np.zeros((0,))
-    true_positives  = np.zeros((0,))
-    scores          = np.zeros((0,))
-    num_annotations = 0.0
-
-    for key, _ in generator.items():
-        image_name = key.split("/")[-1]
-        detections           = all_detections[image_name]
-        annotations          = all_annotations[image_name]
-        num_annotations     += annotations.shape[0]
-        detected_annotations = []
-        for d in detections:
-            scores = np.append(scores, d[4])
-
-            if annotations.shape[0] == 0:
-                false_positives = np.append(false_positives, 1)
-                true_positives  = np.append(true_positives, 0)
-                continue
-            overlaps            = compute_overlap(np.expand_dims(d[:4], axis=0), annotations)
-            assigned_annotation = np.argmax(overlaps, axis=1)
-            max_overlap         = overlaps[0, assigned_annotation]
-
-            if max_overlap >= iou_threshold and assigned_annotation not in detected_annotations:
-                false_positives = np.append(false_positives, 0)
-                true_positives  = np.append(true_positives, 1)
-                detected_annotations.append(assigned_annotation)
-            else:
-                false_positives = np.append(false_positives, 1)
-                true_positives  = np.append(true_positives, 0)
-
-    # sort by score
-    indices         = np.argsort(-scores)
-    false_positives = false_positives[indices]
-    true_positives  = true_positives[indices]
-
-    # compute false positives and true positives
-    false_positives = np.cumsum(false_positives)
-    true_positives  = np.cumsum(true_positives)
-
-    # compute recall and precision
-    recall    = true_positives / num_annotations
-    precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
-
-    # compute average precision
-    average_precision  = _compute_ap(recall, precision)
-    
-    print('\nmAP:')
-    print(average_precision)

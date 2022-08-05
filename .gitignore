@@ -19,6 +19,7 @@ widerface_evaluate/build
 widerface_evaluate/widerface_txt*
 widerface_evaluate/*.so
 widerface_evaluate/*.c
+widerface_evaluate/lr_1e3_resize_image_norm_rgb_L2
 xml_mafa
 annotations.xml
 convertjson.json

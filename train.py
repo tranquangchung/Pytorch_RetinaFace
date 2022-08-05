@@ -17,7 +17,7 @@ from models.retinaface import RetinaFace
 parser = argparse.ArgumentParser(description='Retinaface Training')
 parser.add_argument('--training_dataset', default='./data/widerface/train/label.txt', help='Training dataset directory')
 parser.add_argument('--network', default='mobile0.25', help='Backbone network mobile0.25 or resnet50')
-parser.add_argument('--num_workers', default=15, type=int, help='Number of workers used in dataloading')
+parser.add_argument('--num_workers', default=5, type=int, help='Number of workers used in dataloading')
 parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float, help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
 parser.add_argument('--resume_net', default=None, help='resume net for retraining')
@@ -56,8 +56,8 @@ training_dataset = args.training_dataset
 save_folder = args.save_folder
 
 net = RetinaFace(cfg=cfg)
-print("Printing net...")
-print(net)
+# print("Printing net...")
+# print(net)
 # for name, param in net.named_parameters(): 
 #     if 'body' in name:
 #         param.requires_grad = False
@@ -94,9 +94,10 @@ cudnn.benchmark = True
 optimizer = optim.SGD(net.parameters(), lr=initial_lr, momentum=momentum, weight_decay=weight_decay)
 criterion = MultiBoxLoss(num_classes, 0.35, True, 0, True, 7, 0.35, False)
 
+# priorbox = PriorBox(cfg, image_size=(360, 640))
 # priorbox = PriorBox(cfg, image_size=(480, 640))
-priorbox = PriorBox(cfg, image_size=(360, 640))
 # priorbox = PriorBox(cfg, image_size=(640, 640))
+priorbox = PriorBox(cfg, image_size=(480, 480))
 with torch.no_grad():
     priors = priorbox.forward()
     priors = priors.cuda()
@@ -149,9 +150,10 @@ def train():
         load_t1 = time.time()
         batch_time = load_t1 - load_t0
         eta = int(batch_time * (max_iter - iteration))
-        print('Epoch:{}/{} || Epochiter: {}/{} || Iter: {}/{} || Loc: {:.4f} Cla: {:.4f} Landm: {:.4f} || LR: {:.8f} || Batchtime: {:.4f} s || ETA: {}'
-              .format(epoch, max_epoch, (iteration % epoch_size) + 1,
-              epoch_size, iteration + 1, max_iter, loss_l.item(), loss_c.item(), loss_landm.item(), lr, batch_time, str(datetime.timedelta(seconds=eta))))
+        if iteration % 5000 == 0:
+            print('Epoch:{}/{} || Epochiter: {}/{} || Iter: {}/{} || Loc: {:.4f} Cla: {:.4f} Landm: {:.4f} || LR: {:.8f} || Batchtime: {:.4f} s || ETA: {}'
+                  .format(epoch, max_epoch, (iteration % epoch_size) + 1,
+                  epoch_size, iteration + 1, max_iter, loss_l.item(), loss_c.item(), loss_landm.item(), lr, batch_time, str(datetime.timedelta(seconds=eta))))
 
     torch.save(net.state_dict(), save_folder + cfg['name'] + '_Final.pth')
     # torch.save(net.state_dict(), save_folder + 'Final_Retinaface.pth')
