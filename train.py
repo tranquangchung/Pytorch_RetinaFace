@@ -5,7 +5,7 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import argparse
 import torch.utils.data as data
-from data import WiderFaceDetection, detection_collate, preproc, cfg_mnet, cfg_re50
+from data import WiderFaceDetection, detection_collate, preproc, cfg_mnet, cfg_re50, cfg_mnetv3
 from data.data_augment_1 import preproc1
 from layers.modules import MultiBoxLoss
 from layers.functions.prior_box import PriorBox
@@ -13,6 +13,7 @@ import time
 import datetime
 import math
 from models.retinaface import RetinaFace
+torch.manual_seed(2022)
 
 parser = argparse.ArgumentParser(description='Retinaface Training')
 parser.add_argument('--training_dataset', default='./data/widerface/train/label.txt', help='Training dataset directory')
@@ -36,6 +37,8 @@ if args.network == "mobile0.25":
     cfg = cfg_mnet
 elif args.network == "resnet50":
     cfg = cfg_re50
+elif args.network == 'mobinetv3':
+    cfg = cfg_mnetv3
 print(cfg)
 
 # rgb_mean = (104, 117, 123) # bgr order
@@ -56,8 +59,8 @@ training_dataset = args.training_dataset
 save_folder = args.save_folder
 
 net = RetinaFace(cfg=cfg)
-# print("Printing net...")
-# print(net)
+print("Printing net...")
+print(net)
 # for name, param in net.named_parameters(): 
 #     if 'body' in name:
 #         param.requires_grad = False
@@ -79,7 +82,7 @@ if args.resume_net is not None:
         else:
             name = k
         new_state_dict[name] = v
-    net.load_state_dict(new_state_dict)
+    net.load_state_dict(new_state_dict, strict=False)
     print("Load: ", args.resume_net)
     print("Load finish")
 
@@ -96,8 +99,8 @@ criterion = MultiBoxLoss(num_classes, 0.35, True, 0, True, 7, 0.35, False)
 
 # priorbox = PriorBox(cfg, image_size=(360, 640))
 # priorbox = PriorBox(cfg, image_size=(480, 640))
-# priorbox = PriorBox(cfg, image_size=(640, 640))
-priorbox = PriorBox(cfg, image_size=(480, 480))
+priorbox = PriorBox(cfg, image_size=(640, 640))
+# priorbox = PriorBox(cfg, image_size=(480, 480))
 with torch.no_grad():
     priors = priorbox.forward()
     priors = priors.cuda()
@@ -108,7 +111,7 @@ def train():
     print('Loading Dataset...')
     print("Epoch resume: ", epoch)
 
-    dataset = WiderFaceDetection(training_dataset,preproc1(img_dim, rgb_mean))
+    dataset = WiderFaceDetection(training_dataset,preproc(img_dim, rgb_mean))
 
     epoch_size = math.ceil(len(dataset) / batch_size)
     max_iter = max_epoch * epoch_size

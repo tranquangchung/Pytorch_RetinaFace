@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from collections import OrderedDict
 
 from models.net import MobileNetV1 as MobileNetV1
+from models.mobilenetv3 import mobilenetv3
 from models.net import FPN as FPN
 from models.net import SSH as SSH
 import pdb
@@ -54,6 +55,7 @@ class RetinaFace(nn.Module):
         super(RetinaFace,self).__init__()
         self.phase = phase
         backbone = None
+        in_channels_list = None
         if cfg['name'] == 'mobilenet0.25':
             backbone = MobileNetV1()
             if cfg['pretrain']:
@@ -65,17 +67,21 @@ class RetinaFace(nn.Module):
                     new_state_dict[name] = v
                 # load params
                 # backbone.load_state_dict(new_state_dict)
+            self.body = _utils.IntermediateLayerGetter(backbone, cfg['return_layers'])
         elif cfg['name'] == 'Resnet50':
             import torchvision.models as models
             backbone = models.resnet50(pretrained=cfg['pretrain'])
-
-        self.body = _utils.IntermediateLayerGetter(backbone, cfg['return_layers'])
+            self.body = _utils.IntermediateLayerGetter(backbone, cfg['return_layers'])
+        elif cfg['name'] == 'mobilenetv3':
+            self.body = mobilenetv3()
+            in_channels_list = [24, 48, 576]
         in_channels_stage2 = cfg['in_channel']
-        in_channels_list = [
-            in_channels_stage2 * 2,
-            in_channels_stage2 * 4,
-            in_channels_stage2 * 8,
-        ]
+        if in_channels_list is None:
+            in_channels_list = [
+                in_channels_stage2 * 2,
+                in_channels_stage2 * 4,
+                in_channels_stage2 * 8,
+            ]
         out_channels = cfg['out_channel']
         self.fpn = FPN(in_channels_list,out_channels)
         self.ssh1 = SSH(out_channels, out_channels)
@@ -106,7 +112,6 @@ class RetinaFace(nn.Module):
 
     def forward(self,inputs):
         out = self.body(inputs)
-
         # FPN
         fpn = self.fpn(out)
 

@@ -139,3 +139,12 @@ class MobileNetV1(nn.Module):
         x = self.fc(x)
         return x
 
+if __name__ == "__main__":
+    import torchvision.models._utils as _utils
+    net = MobileNetV1()
+    input_size = torch.randn(1, 3, 640, 640)
+    body = _utils.IntermediateLayerGetter(net, {'stage1': 1, 'stage2': 2, 'stage3': 3})
+    tmp = body(input_size)
+    import pdb
+    # pdb.set_trace()
+    print(tmp)
