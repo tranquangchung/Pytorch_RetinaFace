@@ -4,7 +4,7 @@ import argparse
 import torch
 import torch.backends.cudnn as cudnn
 import numpy as np
-from data import cfg_mnet, cfg_re50
+from data import cfg_mnet, cfg_re50, cfg_mnetv3
 from layers.functions.prior_box import PriorBox
 from utils.nms.py_cpu_nms import py_cpu_nms
 import cv2
@@ -75,6 +75,8 @@ if __name__ == '__main__':
         cfg = cfg_mnet
     elif args.network == "resnet50":
         cfg = cfg_re50
+    elif args.network == 'mobinetv3':
+        cfg = cfg_mnetv3
     # net and model
     net = RetinaFace(cfg=cfg, phase = 'test')
     net = load_model(net, args.trained_model, args.cpu)
@@ -119,6 +121,7 @@ if __name__ == '__main__':
         im_height, im_width, _ = img.shape
         scale = torch.Tensor([img.shape[1], img.shape[0], img.shape[1], img.shape[0]])
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # img = img / 255
         # img = ((img / 255) - 0.5) / 0.5
         # img -= (104, 117, 123)
         img = img.transpose(2, 0, 1)

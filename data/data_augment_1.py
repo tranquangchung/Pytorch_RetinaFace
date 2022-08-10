@@ -5,10 +5,10 @@ from utils.box_utils import matrix_iof
 import pdb
 import math
 
-# h_new, w_new = 360, 640 
+h_new, w_new = 360, 640 
 # h_new, w_new = 480, 640 
 # h_new, w_new = 640, 640 
-h_new, w_new = 480, 480 
+# h_new, w_new = 480, 480 
 
 def _crop(image, boxes, labels, landm, img_dim=None):
     height, width, _ = image.shape

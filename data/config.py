@@ -48,7 +48,7 @@ cfg_mnetv3 = {
     'clip': False,
     'loc_weight': 2.0,
     'gpu_train': True,
-    'batch_size': 15,
+    'batch_size': 30,
     'ngpu': 1,
     'epoch': 200,
     'decay1': 190,

@@ -82,6 +82,7 @@ class WiderFaceDetection(data.Dataset):
             img, target = self.preproc(img, target)
         #### normalize image
         # img = ((img / 255) - 0.5) / 0.5
+        img = img / 255
         ####
         return torch.from_numpy(img), target
 

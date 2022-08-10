@@ -97,9 +97,9 @@ cudnn.benchmark = True
 optimizer = optim.SGD(net.parameters(), lr=initial_lr, momentum=momentum, weight_decay=weight_decay)
 criterion = MultiBoxLoss(num_classes, 0.35, True, 0, True, 7, 0.35, False)
 
-# priorbox = PriorBox(cfg, image_size=(360, 640))
+priorbox = PriorBox(cfg, image_size=(360, 640))
 # priorbox = PriorBox(cfg, image_size=(480, 640))
-priorbox = PriorBox(cfg, image_size=(640, 640))
+# priorbox = PriorBox(cfg, image_size=(640, 640))
 # priorbox = PriorBox(cfg, image_size=(480, 480))
 with torch.no_grad():
     priors = priorbox.forward()
@@ -111,7 +111,7 @@ def train():
     print('Loading Dataset...')
     print("Epoch resume: ", epoch)
 
-    dataset = WiderFaceDetection(training_dataset,preproc(img_dim, rgb_mean))
+    dataset = WiderFaceDetection(training_dataset,preproc1(img_dim, rgb_mean))
 
     epoch_size = math.ceil(len(dataset) / batch_size)
     max_iter = max_epoch * epoch_size
