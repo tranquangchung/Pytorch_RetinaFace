@@ -180,7 +180,7 @@ def train():
 
     input_p = torch.ones(1, 3, 360, 640)
     trace_model = torch.jit.trace(quantized_model, input_p)
-    path_save = save_folder + cfg['name'] + '_Final_quantized_jit.pth'
+    path_save = os.path.join(save_folder, cfg['name'] + '_Final_quantized_jit.pth')
     torch.jit.save(trace_model, path_save)
     print("DONE")
     device='cpu'
