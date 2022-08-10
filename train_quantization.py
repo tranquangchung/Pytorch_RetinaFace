@@ -140,7 +140,7 @@ def train():
             batch_iterator = iter(data.DataLoader(dataset, batch_size, shuffle=True, num_workers=num_workers, collate_fn=detection_collate))
             # if (epoch % 10 == 0 and epoch > 0) or (epoch % 5 == 0 and epoch > cfg['decay1']):
             if epoch > 0 and epoch % 1 == 0:
-                torch.save(quantized_model.state_dict(), save_folder + cfg['name']+ '_epoch_' + str(epoch) + '_quantized_.pth')
+                torch.save(quantized_model.state_dict(), os.path.join(save_folder, cfg['name']+ '_epoch_' + str(epoch) + '_quantized_.pth'))
             epoch += 1
 
         load_t0 = time.time()
@@ -173,7 +173,7 @@ def train():
     quantized_model.to('cpu')
     quantized_model.eval()
     # print(quantized_model)
-    torch.save(quantized_model.state_dict(), save_folder + cfg['name'] + '_Final_quantized_.pth')
+    torch.save(quantized_model.state_dict(), os.path.join(save_folder, cfg['name'] + '_Final_quantized_.pth'))
     quantized_model = torch.quantization.convert(quantized_model, inplace=True)
     quantized_model.eval()
     # print(quantized_model)
