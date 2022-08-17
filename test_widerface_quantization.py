@@ -118,6 +118,7 @@ if __name__ == '__main__':
         im_height, im_width, _ = img.shape
         scale = torch.Tensor([img.shape[1], img.shape[0], img.shape[1], img.shape[0]])
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = img / 255
         # img = ((img / 255) - 0.5) / 0.5
         # img -= (104, 117, 123)
         img = img.transpose(2, 0, 1)

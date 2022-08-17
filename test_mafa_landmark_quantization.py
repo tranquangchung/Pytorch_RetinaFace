@@ -13,7 +13,6 @@ from utils.box_utils import decode, decode_landm
 from utils.timer import Timer
 from scipy.spatial import distance
 import matplotlib.pyplot as plt
-import pandas as pd
 import pdb
 
 
@@ -152,7 +151,7 @@ def _get_detections(generator):
         #     resize = float(max_size) / float(im_size_max)
         # if args.origin_size:
         #     resize = 1
-        resize = 1/3 
+        resize = 1
         if resize != 1:
             img = cv2.resize(img, None, None, fx=resize, fy=resize, interpolation=cv2.INTER_LINEAR)
         im_height, im_width, _ = img.shape
@@ -276,10 +275,8 @@ def _get_annotations(generator):
     """
     num_classes = 1
     num_images = len(generator.keys())
-
     # all_annotations = [[None for i in range(num_classes] for j in range(num_images)]
     all_annotations = {}
-    # list_real_data= []
     for key, value in generator.items():
         image_name = key.split("/")[-1]
         tmp = []
@@ -289,8 +286,6 @@ def _get_annotations(generator):
             y1 = int(box[1])
             w = int(box[2])
             h = int(box[3])
-            # ax1.scatter(w, h, c="blue")
-            # list_real_data.append([w/3, h/3])
             tmp1 = [x1, y1, int(x1+w), int(y1+h)] # x1y1 , x2y2
             # left_eye = [int(float(box[4])), int(float(box[5]))]
             # right_eye = [int(float(box[7])), int(float(box[8]))]
@@ -308,8 +303,6 @@ def _get_annotations(generator):
             tmp.append(tmp1)
         tmp = np.array(tmp).astype(int)
         all_annotations[image_name] = tmp
-    # df = pd.DataFrame(list_real_data, columns=['w', 'h'])
-    # df.plot.scatter(x='w', y='h', c='DarkBlue').get_figure().savefig('real_data.png')
     return all_annotations
 
 def caculate_error(landmark_a, landmark_d, norm):
@@ -338,16 +331,13 @@ if __name__ == '__main__':
     elif args.network == "resnet50":
         cfg = cfg_re50
     # net and model
-    net = RetinaFace(cfg=cfg, phase = 'test')
-    net = load_model(net, args.trained_model, args.cpu)
-    net.eval()
-    print('Finished loading model!')
+    device = 'cpu'
+    net = torch.jit.load(args.trained_model, map_location=device)
+    print('Finished loading jit model!')
     # print(net)
+    print("*"*20)
+    print(net)
     cudnn.benchmark = True
-    device = torch.device("cpu" if args.cpu else "cuda")
-    net = net.to(device)
-    pytorch_total_params = sum(p.numel() for p in net.parameters())
-    print("pytorch_total_params", pytorch_total_params)
 
     # testing dataset
     testset_folder = args.dataset_folder
@@ -363,7 +353,6 @@ if __name__ == '__main__':
                 continue
             _fp_bbox_map[name].append(line)
     all_annotations = _get_annotations(_fp_bbox_map)
-    exit()
     all_detections = _get_detections(_fp_bbox_map) 
 
     average_precisions = {}

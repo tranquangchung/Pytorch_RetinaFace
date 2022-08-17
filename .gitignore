@@ -20,6 +20,7 @@ widerface_evaluate/widerface_txt*
 widerface_evaluate/*.so
 widerface_evaluate/*.c
 widerface_evaluate/lr_1e3_resize_image_norm_rgb_L2
+widerface_evaluate/lr*
 xml_mafa
 annotations.xml
 convertjson.json
@@ -29,3 +30,8 @@ data/FDDB/fddb_images.zip
 data/Mafa_data
 widerface
 tmp.py
+camera_log
+vP4JEru
+checkfile_error.sh
+statistic.py
+statistic_box.txt

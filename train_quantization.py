@@ -46,7 +46,7 @@ num_classes = 2
 img_dim = cfg['image_size']
 num_gpu = cfg['ngpu']
 batch_size = cfg['batch_size']
-max_epoch = 10
+max_epoch = 200
 gpu_train = cfg['gpu_train']
 
 num_workers = args.num_workers
@@ -169,7 +169,7 @@ def train():
             print('Epoch:{}/{} || Epochiter: {}/{} || Iter: {}/{} || Loc: {:.4f} Cla: {:.4f} Landm: {:.4f} || LR: {:.8f} || Batchtime: {:.4f} s || ETA: {}'
                   .format(epoch, max_epoch, (iteration % epoch_size) + 1,
                   epoch_size, iteration + 1, max_iter, loss_l.item(), loss_c.item(), loss_landm.item(), lr, batch_time, str(datetime.timedelta(seconds=eta))))
-        break
+        # break
     quantized_model.to('cpu')
     quantized_model.eval()
     # print(quantized_model)
