@@ -7,6 +7,7 @@ import argparse
 import torch.utils.data as data
 from data import WiderFaceDetection, detection_collate, preproc, cfg_mnet, cfg_re50, cfg_mnetv3
 from data.data_augment_1 import preproc1
+from data.data_augment_2 import preproc2
 from layers.modules import MultiBoxLoss
 from layers.functions.prior_box import PriorBox
 import time
@@ -111,7 +112,7 @@ def train():
     print('Loading Dataset...')
     print("Epoch resume: ", epoch)
 
-    dataset = WiderFaceDetection(training_dataset,preproc1(img_dim, rgb_mean))
+    dataset = WiderFaceDetection(training_dataset,preproc2(img_dim, rgb_mean))
 
     epoch_size = math.ceil(len(dataset) / batch_size)
     max_iter = max_epoch * epoch_size
@@ -129,7 +130,7 @@ def train():
             # create batch iterator
             batch_iterator = iter(data.DataLoader(dataset, batch_size, shuffle=True, num_workers=num_workers, collate_fn=detection_collate))
             if (epoch % 10 == 0 and epoch > 0) or (epoch % 5 == 0 and epoch > cfg['decay1']):
-                torch.save(net.state_dict(), save_folder + cfg['name']+ '_epoch_' + str(epoch) + '.pth')
+                torch.save(net.state_dict(), os.path.join(save_folder, cfg['name']+ '_epoch_' + str(epoch) + '.pth'))
             epoch += 1
 
         load_t0 = time.time()
@@ -158,7 +159,7 @@ def train():
                   .format(epoch, max_epoch, (iteration % epoch_size) + 1,
                   epoch_size, iteration + 1, max_iter, loss_l.item(), loss_c.item(), loss_landm.item(), lr, batch_time, str(datetime.timedelta(seconds=eta))))
 
-    torch.save(net.state_dict(), save_folder + cfg['name'] + '_Final.pth')
+    torch.save(net.state_dict(), os.path.join(save_folder, cfg['name'] + '_Final.pth'))
     # torch.save(net.state_dict(), save_folder + 'Final_Retinaface.pth')
 
 

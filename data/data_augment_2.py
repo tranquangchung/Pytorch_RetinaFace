@@ -337,7 +337,7 @@ def scale_camera(image_t, boxes_t, labels_t, landm_t, pad_image_flag):
     scale = 1
     if np.count_nonzero(b_w_t > 150) or np.count_nonzero(b_h_t > 150):
         max_value = max(np.amax(b_w_t), np.amax(b_h_t))
-        random_value_max = random.randrange(100, 120, 5)
+        random_value_max = random.randrange(45, 120, 5)
         scale = max_value / (random_value_max*ratio_scale)
         scale = scale if scale > 1.0 else 1.0
     image_t = cv2.resize(image_t, None, None, fx=1/(scale*ratio_scale), fy=1/(scale*ratio_scale), interpolation=cv2.INTER_LINEAR)
