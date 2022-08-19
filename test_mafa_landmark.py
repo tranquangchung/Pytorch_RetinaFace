@@ -363,7 +363,6 @@ if __name__ == '__main__':
                 continue
             _fp_bbox_map[name].append(line)
     all_annotations = _get_annotations(_fp_bbox_map)
-    exit()
     all_detections = _get_detections(_fp_bbox_map) 
 
     average_precisions = {}
