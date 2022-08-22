@@ -6,6 +6,6 @@ rgb_mean = (104, 117, 123) # bgr order
 img_dim = 640
 widerface = WiderFaceDetection(training_dataset, preproc2(img_dim, rgb_mean))
 # widerface.__getitem__(13)
-for i in range(34, 100000, 1):
-    # print(i)
+for i in range(0, 100000, 1):
+    print(i)
     widerface.__getitem__(i)

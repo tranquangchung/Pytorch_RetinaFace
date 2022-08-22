@@ -306,6 +306,30 @@ def _pad_to_rectangle_random_position(image, rgb_mean, boxes, labels, landm, pad
         interp_methods = [cv2.INTER_LINEAR, cv2.INTER_CUBIC, cv2.INTER_AREA, cv2.INTER_NEAREST, cv2.INTER_LANCZOS4]
         interp_method = interp_methods[random.randrange(5)]
         image_t = cv2.resize(image, (w_new_tmp, h_new_tmp), interpolation=interp_method) # (w, h)
+    #### Motion Blur ####
+    kernel_size = random.randrange(5, 15, 3)
+    # Create the vertical kernel.
+    kernel_v = np.zeros((kernel_size, kernel_size))
+    # Create a copy of the same for creating the horizontal kernel.
+    kernel_h = np.copy(kernel_v)
+    # Fill the middle row with ones.
+    kernel_v[:, int((kernel_size - 1)/2)] = np.ones(kernel_size)
+    kernel_h[int((kernel_size - 1)/2), :] = np.ones(kernel_size)
+    # Normalize.
+    kernel_v /= kernel_size
+    kernel_h /= kernel_size
+
+    random_sample = np.random.random_sample()
+    if random_sample < 0.3:
+        random_sample1 = random.randrange(0,2)
+        if random_sample1 == 2:
+            image_t = cv2.filter2D(image_t, -1, kernel_v)
+            image_t = cv2.filter2D(image_t, -1, kernel_h)
+        if random_sample1 == 1:
+            image_t = cv2.filter2D(image_t, -1, kernel_v)
+        elif random_sample1 == 0:
+            image_t = cv2.filter2D(image_t, -1, kernel_h)
+    #####################
     return image_t, boxes, landm
 
 def _resize_subtract_mean(image, insize, rgb_mean):
@@ -319,6 +343,7 @@ def _resize_subtract_mean(image, insize, rgb_mean):
     # return image
 
 def visualize(image_t, boxes_t, labels_t, landm_t, pad_image_flag):
+    image_t = cv2.cvtColor(image_t, cv2.COLOR_BGR2RGB)
     for i in range(boxes_t.shape[0]):
         x1 = int(boxes_t[:, 0][i])
         y1 = int(boxes_t[:, 1][i])
@@ -362,8 +387,8 @@ class preproc2(object):
         image_t = _distort(image_t)
         # image_t = _pad_to_rectangle(image_t, self.rgb_means, pad_image_flag)
         image_t, boxes_t, landm_t = _pad_to_rectangle_random_position(image_t, self.rgb_means, boxes_t, labels_t, landm_t, pad_image_flag)
-        # image_t = visualize(image_t, boxes_t, labels_t, landm_t, pad_image_flag)
         #################
+        # image_t = visualize(image_t, boxes_t, labels_t, landm_t, pad_image_flag)
         # cv2.imwrite(f"./test_img/{self.index}.png", image_t)
         # self.index += 1
         #################
