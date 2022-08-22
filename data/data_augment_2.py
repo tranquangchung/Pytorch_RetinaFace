@@ -4,6 +4,7 @@ import random
 from utils.box_utils import matrix_iof
 import pdb
 import math
+import glob
 
 # h_new, w_new = 360, 640 
 # h_new, w_new = 480, 640 
@@ -289,11 +290,21 @@ def _pad_to_rectangle(image, rgb_mean, pad_image_flag):
     return image_t
 
 
+img_backgrounds = glob.glob("./data/background_dataset/*")
 def _pad_to_rectangle_random_position(image, rgb_mean, boxes, labels, landm, pad_image_flag):
     h_new_tmp, w_new_tmp = h_new // ratio_scale , w_new // ratio_scale
     height, width, _ = image.shape
-    image_t = np.empty((h_new_tmp, w_new_tmp, 3), dtype=image.dtype)
-    image_t[:, :] = rgb_mean
+    ### background ###
+    path = random.choice(img_backgrounds)
+    image_background = cv2.imread(path)
+    image_background = cv2.cvtColor(image_background, cv2.COLOR_RGB2BGR)
+    h_bg, w_bg, _ = image_background.shape
+    position_h = random.randrange(h_bg-h_new_tmp) if h_bg > h_new_tmp else 0
+    position_w = random.randrange(w_bg-w_new_tmp) if w_bg > w_new_tmp else 0
+    image_t = image_background[position_h:(position_h+h_new_tmp), position_w:(position_w+w_new_tmp)]
+    # image_t = np.empty((h_new_tmp, w_new_tmp, 3), dtype=image.dtype)
+    # image_t[:, :] = rgb_mean
+    ##################
     offset_Y = random.randrange(h_new_tmp-height) if h_new_tmp > height else 0
     offset_X = random.randrange(w_new_tmp-width) if w_new_tmp > width else 0
     boxes[:, 0::2] += offset_X
